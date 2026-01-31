@@ -8,7 +8,7 @@ const PORT = 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-// Mock Data
+
 const users = [
     {
         id: 1,
@@ -19,14 +19,14 @@ const users = [
     },
     {
         id: 2,
-        email: 'user@kognitive.com', 
+        email: 'user@kognitive.com',
         password: 'user', // In a real app, use encryption!
         role: 'user',
         name: 'Sales Rep'
     }
 ];
 
-// Login Endpoint
+
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
     const user = users.find(u => u.email === email && u.password === password);
