@@ -1,0 +1,33 @@
+<div class="login-container">
+    <div class="glass-panel login-card">
+        <div class="logo-area">
+            <h1>Kognitive</h1>
+            <p>Auction Portal</p>
+        </div>
+
+        <div class="form-area">
+            <h2>Welcome Back</h2>
+
+            <div class="input-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" [(ngModel)]="credentials.email" placeholder="Enter your email">
+            </div>
+
+            <div class="input-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" [(ngModel)]="credentials.password"
+                    placeholder="Enter your password">
+            </div>
+
+            <p class="error-msg" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+            <button class="btn-primary" (click)="login()">Login</button>
+
+            <div class="demo-hints">
+                <small>Admin: admin&#64;kognitive.com / admin</small>
+                <br>
+                <small>User: user&#64;kognitive.com / user</small>
+            </div>
+        </div>
+    </div>
+</div>
