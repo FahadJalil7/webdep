@@ -33,6 +33,30 @@
       align-items: center;
     }
 
+    .btn-admin {
+      width: auto;
+      height: 48px;
+      padding: 0 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.2);
+      color: #fcd34d;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.3s;
+    }
+
+    .btn-admin:hover {
+      background: rgba(245, 158, 11, 0.3);
+      border-color: rgba(245, 158, 11, 0.6);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.2);
+    }
+
     .btn-wishlist {
       width: auto;
       height: 48px;

@@ -3,11 +3,13 @@ import { LoginComponent } from './components/login/login.component';
 import { HomeComponent } from './components/home/home.component';
 import { SettingsComponent } from './components/settings/settings.component';
 import { WishlistComponent } from './components/wishlist/wishlist.component';
+import { AdminComponent } from './components/admin/admin.component';
 
 export const routes: Routes = [
     { path: 'login', component: LoginComponent },
     { path: 'home', component: HomeComponent },
     { path: 'settings', component: SettingsComponent },
     { path: 'wishlist', component: WishlistComponent },
+    { path: 'admin', component: AdminComponent },
     { path: '', redirectTo: 'login', pathMatch: 'full' }
 ];
