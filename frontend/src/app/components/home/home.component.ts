@@ -58,6 +58,11 @@ import { AuthService } from '../../services/auth.service';
               <div class="stat-value">Active</div>
               <div class="stat-label">Status</div>
             </div>
+            <div class="stat-card clickable-card" (click)="goToAuctions()">
+              <div class="stat-icon">🏷️</div>
+              <div class="stat-value">Auctions</div>
+              <div class="stat-label">View Items</div>
+            </div>
             <div class="stat-card">
               <div class="stat-icon">🔔</div>
               <div class="stat-value">{{ notificationsEnabled ? 'On' : 'Off' }}</div>
@@ -104,6 +109,10 @@ export class HomeComponent {
 
   goToWishlist() {
     this.router.navigate(['/wishlist']);
+  }
+
+  goToAuctions() {
+    this.router.navigate(['/auctions']);
   }
 
   goToAdmin() {
