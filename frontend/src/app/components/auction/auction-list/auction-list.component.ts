@@ -30,6 +30,9 @@ import { AuthService } from '../../../services/auth.service';
               <option value="popularity">Popularity</option>
             </select>
             <button *ngIf="isAdmin()" class="btn-primary" (click)="createItem()">+ New Item</button>
+            <div class="balance-display" *ngIf="authService.getCurrentUser()">
+                Balance: <span class="balance-amount">\${{ authService.getCurrentUser().kogbucks_balance.toFixed(2) }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -142,6 +145,25 @@ import { AuthService } from '../../../services/auth.service';
       border-radius: 8px;
       font-weight: 600;
       cursor: pointer;
+    }
+
+
+
+    .balance-display {
+        font-size: 14px;
+        color: #ddd;
+        background: rgba(255,255,255,0.1);
+        padding: 8px 12px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 35px; /* Match select/button height approx */
+    }
+
+    .balance-amount {
+        color: #4caf50;
+        font-weight: bold;
     }
 
     .content {
@@ -330,7 +352,7 @@ export class AuctionListComponent implements OnInit, OnDestroy {
     private auctionService: AuctionService,
     private router: Router,
     private wishlistService: WishlistService,
-    private authService: AuthService
+    public authService: AuthService
   ) { }
 
   ngOnInit() {

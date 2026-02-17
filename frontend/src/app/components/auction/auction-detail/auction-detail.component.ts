@@ -80,7 +80,12 @@ import { AuthService } from '../../../services/auth.service';
 
           <!-- Bidding Section - only for active auctions -->
           <div class="bidding-section" *ngIf="item.status === 'active'">
-            <h3>Place a Bid</h3>
+            <div class="bid-header">
+                <h3>Place a Bid</h3>
+                <div class="balance-display" *ngIf="authService.getCurrentUser()">
+                    Balance: <span class="balance-amount">\${{ authService.getCurrentUser().kogbucks_balance.toFixed(2) }}</span>
+                </div>
+            </div>
             <div class="bid-input-group">
                 <span class="currency">$</span>
                 <input type="number" [(ngModel)]="bidAmount" [min]="item.currentBid + 1" class="bid-input">
@@ -323,8 +328,28 @@ import { AuthService } from '../../../services/auth.service';
     }
 
     .bidding-section h3 {
-      margin: 0 0 15px 0;
+      margin: 0;
       font-size: 18px;
+    }
+
+    .bid-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .balance-display {
+        font-size: 14px;
+        color: #ddd;
+        background: rgba(0,0,0,0.2);
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+
+    .balance-amount {
+        color: #4caf50;
+        font-weight: bold;
     }
 
     .bid-input-group {
@@ -525,6 +550,9 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
           this.message = 'Bid placed successfully!';
           this.isError = false;
           this.bidAmount = this.item.currentBid + 1;
+          if (res.newBalance !== undefined) {
+            this.authService.updateUserBalance(res.newBalance);
+          }
         }
       },
       error: (err) => {
