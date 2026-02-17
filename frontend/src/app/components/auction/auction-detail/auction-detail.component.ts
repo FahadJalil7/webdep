@@ -79,7 +79,7 @@ import { AuthService } from '../../../services/auth.service';
           </div>
 
           <!-- Bidding Section - only for active auctions -->
-          <div class="bidding-section" *ngIf="item.status === 'active'">
+          <div class="bidding-section" *ngIf="item.status === 'active' && !isAdmin()">
             <div class="bid-header">
                 <h3>Place a Bid</h3>
                 <div class="balance-display" *ngIf="authService.getCurrentUser()">
