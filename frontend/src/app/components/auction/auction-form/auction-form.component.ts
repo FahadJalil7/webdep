@@ -150,7 +150,7 @@ import { AuctionService, AuctionItem } from '../../../services/auction.service';
 
     .input-field:focus {
         outline: none;
-        border-color: #6C5DD3;
+        border-color: var(--theme-blue-40);
     }
 
     textarea.input-field {
@@ -180,7 +180,7 @@ import { AuctionService, AuctionItem } from '../../../services/auction.service';
     .btn-submit {
         width: 100%;
         padding: 14px;
-        background: linear-gradient(135deg, #6C5DD3 0%, #8B5CF6 100%);
+        background: var(--accent-gradient);
         color: white;
         border: none;
         border-radius: 8px;

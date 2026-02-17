@@ -60,7 +60,7 @@ import { AuthService } from '../../../services/auth.service';
               </div>
               <div class="timer-row">
                 <div class="countdown" *ngIf="item.status === 'active'">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--theme-blue-40)" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
                   </svg>
                   <span class="time-left">{{ getTimeRemaining(item) }}</span>
@@ -138,7 +138,7 @@ import { AuthService } from '../../../services/auth.service';
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #6C5DD3 0%, #8B5CF6 100%);
+      background: var(--accent-gradient);
       color: white;
       border: none;
       padding: 8px 16px;
@@ -190,7 +190,7 @@ import { AuthService } from '../../../services/auth.service';
     .auction-card:hover {
       transform: translateY(-5px);
       background: rgba(255, 255, 255, 0.08);
-      box-shadow: 0 12px 40px rgba(108, 93, 211, 0.15);
+      box-shadow: 0 12px 40px rgba(41, 128, 185, 0.15);
     }
 
     .card-image {
@@ -290,7 +290,7 @@ import { AuthService } from '../../../services/auth.service';
     .current-bid {
         font-size: 18px;
         font-weight: bold;
-        color: #6C5DD3;
+        color: var(--theme-blue-40);
     }
 
     .starting-bid {
@@ -318,7 +318,7 @@ import { AuthService } from '../../../services/auth.service';
     }
 
     .time-left {
-        color: #8B5CF6;
+        color: var(--theme-blue-40);
     }
 
     .ended-text {

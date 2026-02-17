@@ -234,13 +234,13 @@ import { AuthService } from '../../../services/auth.service';
     }
 
     .highlight {
-      color: #6C5DD3;
+      color: var(--theme-blue-40);
     }
 
     /* Time Frame Section */
     .time-frame-section {
-      background: rgba(139, 92, 246, 0.08);
-      border: 1px solid rgba(139, 92, 246, 0.2);
+      background: rgba(41, 128, 185, 0.08);
+      border: 1px solid rgba(41, 128, 185, 0.2);
       border-radius: 12px;
       padding: 18px;
       margin-bottom: 24px;
@@ -252,7 +252,7 @@ import { AuthService } from '../../../services/auth.service';
       display: flex;
       align-items: center;
       gap: 8px;
-      color: #c4b5fd;
+      color: var(--theme-blue-20);
     }
 
     .time-details {
@@ -284,7 +284,7 @@ import { AuthService } from '../../../services/auth.service';
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(139, 92, 246, 0.15);
+      background: rgba(41, 128, 185, 0.15);
       padding: 10px 14px;
       border-radius: 8px;
     }
@@ -305,7 +305,7 @@ import { AuthService } from '../../../services/auth.service';
     .countdown-value {
       font-size: 18px;
       font-weight: 700;
-      color: #8B5CF6;
+      color: var(--theme-blue-40);
       font-variant-numeric: tabular-nums;
     }
 
@@ -375,7 +375,7 @@ import { AuthService } from '../../../services/auth.service';
 
     .btn-bid {
       padding: 12px 24px;
-      background: linear-gradient(135deg, #6C5DD3 0%, #8B5CF6 100%);
+      background: var(--accent-gradient);
       border: none;
       border-radius: 8px;
       color: white;
@@ -386,7 +386,7 @@ import { AuthService } from '../../../services/auth.service';
 
     .btn-bid:hover:not(:disabled) {
       transform: translateY(-1px);
-      box-shadow: 0 4px 15px rgba(108, 93, 211, 0.4);
+      box-shadow: 0 4px 15px rgba(41, 128, 185, 0.4);
     }
 
     .btn-bid:disabled {
