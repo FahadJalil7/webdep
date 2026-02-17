@@ -6,10 +6,10 @@ import { UserService, User } from '../../services/user.service';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
-    selector: 'app-admin',
-    standalone: true,
-    imports: [CommonModule, FormsModule],
-    template: `
+  selector: 'app-admin',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
     <div class="admin-container">
       <div class="glass-panel admin-card">
         <div class="admin-header">
@@ -102,7 +102,7 @@ import { AuthService } from '../../services/auth.service';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .admin-container {
       display: flex;
       justify-content: center;
@@ -388,106 +388,106 @@ import { AuthService } from '../../services/auth.service';
   `]
 })
 export class AdminComponent implements OnInit {
-    users: User[] = [];
-    loading = true;
-    error: string | null = null;
-    updatingUserId: number | null = null;
-    successMessage: string | null = null;
-    successUserId: number | null = null;
+  users: User[] = [];
+  loading = true;
+  error: string | null = null;
+  updatingUserId: number | null = null;
+  successMessage: string | null = null;
+  successUserId: number | null = null;
 
-    private pendingBalances: Map<number, number> = new Map();
+  private pendingBalances: Map<number, number> = new Map();
 
-    constructor(
-        private userService: UserService,
-        private authService: AuthService,
-        private router: Router
-    ) { }
+  constructor(
+    private userService: UserService,
+    private authService: AuthService,
+    private router: Router
+  ) { }
 
-    ngOnInit() {
-        // Check if user is admin
-        const currentUser = this.authService.getCurrentUser();
-        if (!currentUser || currentUser.role !== 'admin') {
-            this.router.navigate(['/home']);
-            return;
-        }
-
-        this.loadUsers();
+  ngOnInit() {
+    // Check if user is admin
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser || currentUser.role !== 'admin') {
+      this.router.navigate(['/home']);
+      return;
     }
 
-    loadUsers() {
-        this.loading = true;
-        this.error = null;
+    this.loadUsers();
+  }
 
-        this.userService.getAllUsers().subscribe({
-            next: (response) => {
-                if (response.success) {
-                    this.users = response.users;
-                    // Initialize pending balances
-                    this.users.forEach(user => {
-                        this.pendingBalances.set(user.id, user.kogbucks_balance);
-                    });
-                }
-                this.loading = false;
-            },
-            error: (err) => {
-                this.error = 'Failed to load users. Please try again.';
-                this.loading = false;
-                console.error('Error loading users:', err);
+  loadUsers() {
+    this.loading = true;
+    this.error = null;
+
+    this.userService.getAllUsers().subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.users = response.users.filter((user: any) => user.role !== 'admin');
+          // Initialize pending balances
+          this.users.forEach(user => {
+            this.pendingBalances.set(user.id, user.kogbucks_balance);
+          });
+        }
+        this.loading = false;
+      },
+      error: (err) => {
+        this.error = 'Failed to load users. Please try again.';
+        this.loading = false;
+        console.error('Error loading users:', err);
+      }
+    });
+  }
+
+  onBalanceInput(event: Event, user: User) {
+    const input = event.target as HTMLInputElement;
+    const value = parseInt(input.value, 10);
+    if (!isNaN(value) && value >= 0) {
+      this.pendingBalances.set(user.id, value);
+    }
+  }
+
+  updateBalance(user: User) {
+    const newBalance = this.pendingBalances.get(user.id);
+    if (newBalance === undefined || newBalance < 0) {
+      return;
+    }
+
+    this.updatingUserId = user.id;
+    this.successMessage = null;
+    this.successUserId = null;
+
+    this.userService.updateKogbucksBalance(user.id, newBalance).subscribe({
+      next: (response) => {
+        if (response.success) {
+          // Update local user data
+          user.kogbucks_balance = newBalance;
+          this.successMessage = 'Balance updated successfully!';
+          this.successUserId = user.id;
+
+          // Update current user in localStorage if updating self
+          const currentUser = this.authService.getCurrentUser();
+          if (currentUser && currentUser.id === user.id) {
+            currentUser.kogbucks_balance = newBalance;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          }
+
+          // Clear success message after 3 seconds
+          setTimeout(() => {
+            if (this.successUserId === user.id) {
+              this.successMessage = null;
+              this.successUserId = null;
             }
-        });
-    }
-
-    onBalanceInput(event: Event, user: User) {
-        const input = event.target as HTMLInputElement;
-        const value = parseInt(input.value, 10);
-        if (!isNaN(value) && value >= 0) {
-            this.pendingBalances.set(user.id, value);
+          }, 3000);
         }
-    }
+        this.updatingUserId = null;
+      },
+      error: (err) => {
+        console.error('Error updating balance:', err);
+        this.updatingUserId = null;
+      }
+    });
+  }
 
-    updateBalance(user: User) {
-        const newBalance = this.pendingBalances.get(user.id);
-        if (newBalance === undefined || newBalance < 0) {
-            return;
-        }
-
-        this.updatingUserId = user.id;
-        this.successMessage = null;
-        this.successUserId = null;
-
-        this.userService.updateKogbucksBalance(user.id, newBalance).subscribe({
-            next: (response) => {
-                if (response.success) {
-                    // Update local user data
-                    user.kogbucks_balance = newBalance;
-                    this.successMessage = 'Balance updated successfully!';
-                    this.successUserId = user.id;
-
-                    // Update current user in localStorage if updating self
-                    const currentUser = this.authService.getCurrentUser();
-                    if (currentUser && currentUser.id === user.id) {
-                        currentUser.kogbucks_balance = newBalance;
-                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    }
-
-                    // Clear success message after 3 seconds
-                    setTimeout(() => {
-                        if (this.successUserId === user.id) {
-                            this.successMessage = null;
-                            this.successUserId = null;
-                        }
-                    }, 3000);
-                }
-                this.updatingUserId = null;
-            },
-            error: (err) => {
-                console.error('Error updating balance:', err);
-                this.updatingUserId = null;
-            }
-        });
-    }
-
-    goBack() {
-        this.router.navigate(['/home']);
-    }
+  goBack() {
+    this.router.navigate(['/home']);
+  }
 }

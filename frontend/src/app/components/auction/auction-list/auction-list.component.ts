@@ -30,7 +30,7 @@ import { AuthService } from '../../../services/auth.service';
               <option value="popularity">Popularity</option>
             </select>
             <button *ngIf="isAdmin()" class="btn-primary" (click)="createItem()">+ New Item</button>
-            <div class="balance-display" *ngIf="authService.getCurrentUser()">
+            <div class="balance-display" *ngIf="authService.getCurrentUser() && !isAdmin()">
                 Balance: <span class="balance-amount">\${{ authService.getCurrentUser().kogbucks_balance.toFixed(2) }}</span>
             </div>
           </div>
@@ -45,7 +45,7 @@ import { AuthService } from '../../../services/auth.service';
               <div class="status-badge" [ngClass]="item.status">
                 {{ item.status === 'active' ? '● LIVE' : item.status === 'ended' ? 'ENDED' : 'UPCOMING' }}
               </div>
-              <button class="btn-fav" (click)="toggleFav($event, item)">
+              <button class="btn-fav" (click)="toggleFav($event, item)" *ngIf="!isAdmin()">
                 {{ isFavourite(item.id) ? '❤️' : '🤍' }}
               </button>
             </div>
