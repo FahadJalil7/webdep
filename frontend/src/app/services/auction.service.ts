@@ -7,11 +7,15 @@ export interface AuctionItem {
     name: string;
     description: string;
     value: number;
+    startingBid: number;
     currentBid: number;
     bids: any[];
     type: 'Physical' | 'Gift Card';
     imageUrl: string;
     bidCount: number;
+    startTime: string;
+    endTime: string;
+    status: 'active' | 'ended' | 'upcoming';
 }
 
 @Injectable({

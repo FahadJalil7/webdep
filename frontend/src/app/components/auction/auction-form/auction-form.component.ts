@@ -5,10 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { AuctionService, AuctionItem } from '../../../services/auction.service';
 
 @Component({
-    selector: 'app-auction-form',
-    standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule],
-    template: `
+  selector: 'app-auction-form',
+  standalone: true,
+  imports: [CommonModule, RouterModule, FormsModule],
+  template: `
     <div class="form-container">
       <div class="header">
         <button class="btn-back" (click)="goBack()">Cancel</button>
@@ -49,6 +49,17 @@ import { AuctionService, AuctionItem } from '../../../services/auction.service';
             </select>
           </div>
 
+          <div class="row">
+            <div class="form-group half">
+                <label for="startTime">Start Time</label>
+                <input type="datetime-local" id="startTime" name="startTime" [(ngModel)]="item.startTime" required class="input-field">
+            </div>
+            <div class="form-group half">
+                <label for="endTime">End Time</label>
+                <input type="datetime-local" id="endTime" name="endTime" [(ngModel)]="item.endTime" required class="input-field">
+            </div>
+          </div>
+
           <div class="form-group">
             <label for="imageUrl">Image URL</label>
             <input type="text" id="imageUrl" name="imageUrl" [(ngModel)]="item.imageUrl" class="input-field" placeholder="https://example.com/image.jpg">
@@ -71,7 +82,7 @@ import { AuctionService, AuctionItem } from '../../../services/auction.service';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .form-container {
       max-width: 600px;
       margin: 0 auto;
@@ -191,59 +202,63 @@ import { AuctionService, AuctionItem } from '../../../services/auction.service';
   `]
 })
 export class AuctionFormComponent implements OnInit {
-    item: any = {
-        name: '',
-        description: '',
-        value: null,
-        currentBid: 0,
-        type: 'Physical',
-        imageUrl: ''
-    };
-    isEditMode: boolean = false;
-    errorMessage: string = '';
+  item: any = {
+    name: '',
+    description: '',
+    value: null,
+    currentBid: 0,
+    type: 'Physical',
+    imageUrl: '',
+    startTime: '',
+    endTime: ''
+  };
+  isEditMode: boolean = false;
+  errorMessage: string = '';
 
-    constructor(
-        private auctionService: AuctionService,
-        private router: Router,
-        private route: ActivatedRoute
-    ) { }
+  constructor(
+    private auctionService: AuctionService,
+    private router: Router,
+    private route: ActivatedRoute
+  ) { }
 
-    ngOnInit() {
-        const id = this.route.snapshot.params['id'];
-        if (id) {
-            this.isEditMode = true;
-            this.auctionService.getItem(id).subscribe(res => {
-                if (res.success) {
-                    this.item = { ...res.item };
-                }
-            });
+  ngOnInit() {
+    const id = this.route.snapshot.params['id'];
+    if (id) {
+      this.isEditMode = true;
+      this.auctionService.getItem(id).subscribe(res => {
+        if (res.success) {
+          this.item = { ...res.item };
         }
+      });
     }
+  }
 
-    onSubmit() {
-        if (this.isEditMode) {
-            this.auctionService.updateItem(this.item.id, this.item).subscribe({
-                next: () => this.router.navigate(['/auctions', this.item.id]),
-                error: (err) => this.errorMessage = err.message || 'Update failed'
-            });
-        } else {
-            // Map startingBid to currentBid in backend
-            const newItem = {
-                ...this.item,
-                startingBid: this.item.currentBid // Backend expects this key for initial creation logic
-            };
-            this.auctionService.createItem(newItem).subscribe({
-                next: () => this.router.navigate(['/auctions']),
-                error: (err) => this.errorMessage = err.message || 'Creation failed'
-            });
-        }
+  onSubmit() {
+    if (this.isEditMode) {
+      this.auctionService.updateItem(this.item.id, this.item).subscribe({
+        next: () => this.router.navigate(['/auctions', this.item.id]),
+        error: (err) => this.errorMessage = err.message || 'Update failed'
+      });
+    } else {
+      // Map startingBid to currentBid in backend
+      const newItem = {
+        ...this.item,
+        startingBid: this.item.currentBid,
+        startTime: new Date(this.item.startTime).toISOString(),
+        endTime: new Date(this.item.endTime).toISOString()
+      };
+      this.auctionService.createItem(newItem).subscribe({
+        next: () => this.router.navigate(['/auctions']),
+        error: (err) => this.errorMessage = err.message || 'Creation failed'
+      });
     }
+  }
 
-    goBack() {
-        if (this.isEditMode) {
-            this.router.navigate(['/auctions', this.item.id]);
-        } else {
-            this.router.navigate(['/auctions']);
-        }
+  goBack() {
+    if (this.isEditMode) {
+      this.router.navigate(['/auctions', this.item.id]);
+    } else {
+      this.router.navigate(['/auctions']);
     }
+  }
 }

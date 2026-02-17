@@ -72,45 +72,62 @@ app.put('/api/users/:id/kogbucks', (req, res) => {
 
 // --- Auction Items API ---
 
+// Helper to compute auction status
+function getAuctionStatus(item) {
+    const now = new Date();
+    if (new Date(item.endTime) < now) return 'ended';
+    if (new Date(item.startTime) > now) return 'upcoming';
+    return 'active';
+}
+
 let auctionItems = [
     {
         id: 1,
         name: "Vintage Film Camera",
         description: "A pristine condition 1970s film camera. Perfect for collectors and enthusiasts.",
         value: 150.00,
+        startingBid: 25.00,
         currentBid: 55.00,
-        bids: [], 
+        bids: [],
         type: "Physical",
         imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
-        bidCount: 5
+        bidCount: 5,
+        startTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     },
     {
         id: 2,
         name: "$50 Amazon Gift Card",
         description: "Digital code for Amazon US.",
         value: 50.00,
+        startingBid: 10.00,
         currentBid: 20.00,
         bids: [],
         type: "Gift Card",
         imageUrl: "https://images.unsplash.com/photo-1512418490979-92798cec1380?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
-        bidCount: 2
+        bidCount: 2,
+        startTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()
     },
     {
         id: 3,
         name: "Signed Basketball",
         description: "Basketball signed by the local team captain.",
         value: 200.00,
+        startingBid: 40.00,
         currentBid: 80.00,
         bids: [],
         type: "Physical",
         imageUrl: "https://images.unsplash.com/photo-1519861531473-920026393112?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
-        bidCount: 8
+        bidCount: 8,
+        startTime: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
     }
 ];
 
 // Get all auction items (with optional sorting)
 app.get('/api/auction-items', (req, res) => {
-    let items = [...auctionItems];
+    let items = auctionItems.map(item => ({ ...item, status: getAuctionStatus(item) }));
     const { sortBy } = req.query;
 
     if (sortBy === 'priceAsc') {
@@ -128,7 +145,7 @@ app.get('/api/auction-items', (req, res) => {
 app.get('/api/auction-items/:id', (req, res) => {
     const item = auctionItems.find(i => i.id === parseInt(req.params.id));
     if (item) {
-        res.json({ success: true, item });
+        res.json({ success: true, item: { ...item, status: getAuctionStatus(item) } });
     } else {
         res.status(404).json({ success: false, message: 'Item not found' });
     }
@@ -136,32 +153,44 @@ app.get('/api/auction-items/:id', (req, res) => {
 
 // Create new auction item
 app.post('/api/auction-items', (req, res) => {
-    const { name, description, value, type, imageUrl, startingBid } = req.body;
-    
+    const { name, description, value, type, imageUrl, startingBid, startTime, endTime } = req.body;
+
     const newItem = {
         id: Date.now(),
         name,
         description,
         value: parseFloat(value),
+        startingBid: parseFloat(startingBid) || 0,
         currentBid: parseFloat(startingBid) || 0,
         bids: [],
         type,
         imageUrl: imageUrl || "https://via.placeholder.com/300?text=No+Image",
-        bidCount: 0
+        bidCount: 0,
+        startTime: startTime || new Date().toISOString(),
+        endTime: endTime || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
 
     auctionItems.push(newItem);
-    res.json({ success: true, item: newItem });
+    res.json({ success: true, item: { ...newItem, status: getAuctionStatus(newItem) } });
 });
 
 // Place a bid
 app.post('/api/auction-items/:id/bid', (req, res) => {
     const itemId = parseInt(req.params.id);
     const { amount, userId } = req.body;
-    
+
     const item = auctionItems.find(i => i.id === itemId);
     if (!item) {
         return res.status(404).json({ success: false, message: 'Item not found' });
+    }
+
+    // Reject bids on ended auctions
+    if (getAuctionStatus(item) === 'ended') {
+        return res.status(400).json({ success: false, message: 'This auction has ended' });
+    }
+
+    if (getAuctionStatus(item) === 'upcoming') {
+        return res.status(400).json({ success: false, message: 'This auction has not started yet' });
     }
 
     if (amount <= item.currentBid) {
@@ -169,19 +198,19 @@ app.post('/api/auction-items/:id/bid', (req, res) => {
     }
 
     // In a real app, verify user balance here
-    
+
     item.currentBid = parseFloat(amount);
     item.bidCount++;
     item.bids.push({ userId, amount: parseFloat(amount), timestamp: new Date() });
 
-    res.json({ success: true, item, message: 'Bid placed successfully' });
+    res.json({ success: true, item: { ...item, status: getAuctionStatus(item) }, message: 'Bid placed successfully' });
 });
 
 // Update item (Edit)
 app.put('/api/auction-items/:id', (req, res) => {
     const itemId = parseInt(req.params.id);
     const updates = req.body;
-    
+
     const index = auctionItems.findIndex(i => i.id === itemId);
     if (index === -1) {
         return res.status(404).json({ success: false, message: 'Item not found' });
