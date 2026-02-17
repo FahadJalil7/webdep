@@ -1,14 +1,61 @@
 /* Global Styles */
 :root {
-  --primary-color: #6C5DD3;
-  --secondary-color: #FD7E14;
-  --background-dark: #0f0f12; /* Very dark, almost black */
-  --surface-dark: #1b1b24;    /* Slightly lighter for cards */
+  /* Neutral Colors */
+  --neutral-primary-white: #FAFAFA;
+  --neutral-primary-black: #273238;
+  --neutral-secondary-white: #FFFFFF;
+  --neutral-secondary-black: #000000;
+  --neutral-grey-10: #ECF0F1;
+  --neutral-grey-20: #D9D9D9;
+  --neutral-grey-30: #B8B8B8;
+  --neutral-grey-40: #7E7E7E;
+  --neutral-grey-50: #5C5A5A;
+
+  /* Theme Color (Blue) */
+  --theme-blue-00: #D4EDFD;
+  --theme-blue-10: #A9DDFC;
+  --theme-blue-20: #63B5EB;
+  --theme-blue-30: #1598DB;
+  --theme-blue-40: #2980B9;
+  --theme-blue-50: #216694;
+  --theme-blue-60: #34495E;
+  --theme-blue-70: #2C3E50;
+
+  /* Status Colors */
+  --status-green-10: #A3E4D7;
+  --status-green-20: #0AA788;
+  --status-green-30: #0A4B3E;
+  --status-yellow-10: #F9E79F;
+  --status-yellow-20: #F1C40F;
+  --status-yellow-30: #AE700D;
+  --status-red-10: #FADBD8;
+  --status-red-20: #CB2530;
+  --status-red-30: #8B2424;
+
+  /* Accent Colors */
+  --accent-orange-10: #FDEBD0;
+  --accent-orange-20: #F8C471;
+  --accent-orange-30: #F39C12;
+  --accent-purple-10: #EBDEF0;
+  --accent-purple-20: #C39BD3;
+  --accent-purple-30: #7C4792;
+
+  /* Functional Mappings */
+  --primary-color: var(--theme-blue-40);
+  /* Main Action Color */
+  --secondary-color: var(--accent-orange-30);
+  /* Secondary Action Color */
+  --background-dark: var(--neutral-primary-black);
+  /* Main Background */
+  --surface-dark: var(--theme-blue-70);
+  /* Cards / Surface */
+  --text-primary: var(--neutral-primary-white);
+  --text-secondary: var(--neutral-grey-20);
+
+  /* Retaining glass effect but tweaking slightly if needed */
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
-  --text-primary: #ffffff;
-  --text-secondary: #a0a0b0;
-  --accent-gradient: linear-gradient(135deg, #6C5DD3 0%, #8B5CF6 100%);
+  --accent-gradient: linear-gradient(135deg, var(--theme-blue-40) 0%, var(--theme-blue-50) 100%);
 }
 
 body {
@@ -38,12 +85,14 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(108, 93, 211, 0.4);
+  box-shadow: 0 4px 15px rgba(41, 128, 185, 0.4);
+  /* Blue-40 alpha */
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(108, 93, 211, 0.6);
+  box-shadow: 0 8px 25px rgba(41, 128, 185, 0.6);
+  /* Blue-40 alpha */
 }
 
 /* Inputs */
@@ -66,7 +115,9 @@ input:focus {
 }
 
 /* Typography */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   margin: 0;
   font-weight: 700;
 }

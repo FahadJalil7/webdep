@@ -137,12 +137,12 @@ import { WishlistItem, WishlistService } from '../../services/wishlist.service';
     
     .input-field:focus {
       outline: none;
-      border-color: #6C5DD3;
+      border-color: var(--theme-blue-40);
       background: rgba(255, 255, 255, 0.1);
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #6C5DD3 0%, #8B5CF6 100%);
+      background: var(--accent-gradient);
       color: white;
       border: none;
       padding: 12px 24px;
