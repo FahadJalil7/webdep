@@ -197,13 +197,71 @@ app.post('/api/auction-items/:id/bid', (req, res) => {
         return res.status(400).json({ success: false, message: 'Bid must be higher than current bid' });
     }
 
-    // In a real app, verify user balance here
+    // Check if user is already the highest bidder on any other active item
+    const activeAuction = auctionItems.find(i => 
+        i.id !== itemId && 
+        getAuctionStatus(i) === 'active' && 
+        i.bids.length > 0 && 
+        i.bids[i.bids.length - 1].userId === userId
+    );
+
+    if (activeAuction) {
+        return res.status(400).json({ 
+            success: false, 
+            message: `You already have an active bid on "${activeAuction.name}". You can only bid on one item at a time.` 
+        });
+    }
+
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+        return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Handle existing high bid processing
+    let refundAmount = 0;
+    const previousHighBid = item.bids.length > 0 ? item.bids[item.bids.length - 1] : null;
+
+    // Check if user is raising their own bid
+    const isRaisingOwnBid = previousHighBid && previousHighBid.userId === userId;
+    
+    // Calculate total available funds (current balance + potential refund if raising own bid)
+    let availableFunds = user.kogbucks_balance;
+    if (isRaisingOwnBid) {
+        availableFunds += previousHighBid.amount; 
+    }
+
+    if (amount > availableFunds) {
+        return res.status(400).json({ success: false, message: 'Insufficient funds' });
+    }
+
+    // 1. DEDUCT from current user (Hold funds)
+    if (isRaisingOwnBid) {
+        // Refund previous bid first (logically)
+        user.kogbucks_balance += previousHighBid.amount;
+    }
+    user.kogbucks_balance -= parseFloat(amount);
+
+
+    // 2. REFUND previous bidder (if different user)
+    if (previousHighBid && !isRaisingOwnBid) {
+        const prevUser = users.find(u => u.id === previousHighBid.userId);
+        if (prevUser) {
+            prevUser.kogbucks_balance += previousHighBid.amount;
+            console.log(`Refunded ${previousHighBid.amount} to user ${prevUser.id}`);
+        }
+    }
 
     item.currentBid = parseFloat(amount);
     item.bidCount++;
     item.bids.push({ userId, amount: parseFloat(amount), timestamp: new Date() });
 
-    res.json({ success: true, item: { ...item, status: getAuctionStatus(item) }, message: 'Bid placed successfully' });
+    // Return the updated balance for the frontend
+    res.json({ 
+        success: true, 
+        item: { ...item, status: getAuctionStatus(item) }, 
+        message: 'Bid placed successfully',
+        newBalance: user.kogbucks_balance
+    });
 });
 
 // Update item (Edit)

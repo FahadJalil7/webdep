@@ -30,5 +30,12 @@ export class AuthService {
     return user ? JSON.parse(user) : null;
   }
 
+  updateUserBalance(newBalance: number): void {
+    const user = this.getCurrentUser();
+    if (user) {
+      user.kogbucks_balance = newBalance;
+      localStorage.setItem(this.currentUserKey, JSON.stringify(user));
+    }
+  }
 
 }
