@@ -50,8 +50,13 @@ import { AuthService } from '../../services/auth.service';
           <div class="stats-grid">
             <div class="stat-card" *ngIf="authService.getCurrentUser()?.role !== 'admin'">
               <div class="stat-icon">💰</div>
-              <div class="stat-value">{{ authService.getCurrentUser()?.kogbucks_balance || 0 }}</div>
-              <div class="stat-label">Kogbucks</div>
+              <div class="stat-value">{{ (authService.getCurrentUser()?.kogbucks_balance || 0) - (authService.getCurrentUser()?.kogbucks_on_hold || 0) }}</div>
+              <div class="stat-label">Available</div>
+            </div>
+            <div class="stat-card" *ngIf="authService.getCurrentUser()?.role !== 'admin'">
+              <div class="stat-icon">⏳</div>
+              <div class="stat-value">{{ authService.getCurrentUser()?.kogbucks_on_hold || 0 }}</div>
+              <div class="stat-label">On Hold</div>
             </div>
             <div class="stat-card">
               <div class="stat-icon">✓</div>

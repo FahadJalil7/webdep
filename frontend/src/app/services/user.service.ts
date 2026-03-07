@@ -8,6 +8,7 @@ export interface User {
     role: string;
     name: string;
     kogbucks_balance: number;
+    kogbucks_on_hold: number;
 }
 
 @Injectable({

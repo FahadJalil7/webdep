@@ -16,7 +16,8 @@ const users = [
         password: 'admin', // In a real app, use encryption!
         role: 'admin',
         name: 'Admin User',
-        kogbucks_balance: 1000
+        kogbucks_balance: 1000,
+        kogbucks_on_hold: 0
     },
     {
         id: 2,
@@ -24,7 +25,8 @@ const users = [
         password: 'user', // In a real app, use encryption!
         role: 'user',
         name: 'Sales Rep',
-        kogbucks_balance: 250
+        kogbucks_balance: 250,
+        kogbucks_on_hold: 0
     }
 ];
 
@@ -167,7 +169,8 @@ app.post('/api/auction-items', (req, res) => {
         imageUrl: imageUrl || "https://via.placeholder.com/300?text=No+Image",
         bidCount: 0,
         startTime: startTime || new Date().toISOString(),
-        endTime: endTime || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        endTime: endTime || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        finalized: false
     };
 
     auctionItems.push(newItem);
@@ -177,7 +180,7 @@ app.post('/api/auction-items', (req, res) => {
 // Place a bid
 app.post('/api/auction-items/:id/bid', (req, res) => {
     const itemId = parseInt(req.params.id);
-    const { amount, userId } = req.body;
+    const { userId } = req.body;
 
     const item = auctionItems.find(i => i.id === itemId);
     if (!item) {
@@ -193,74 +196,61 @@ app.post('/api/auction-items/:id/bid', (req, res) => {
         return res.status(400).json({ success: false, message: 'This auction has not started yet' });
     }
 
-    if (amount <= item.currentBid) {
-        return res.status(400).json({ success: false, message: 'Bid must be higher than current bid' });
-    }
-
-    // Check if user is already the highest bidder on any other active item
-    const activeAuction = auctionItems.find(i => 
-        i.id !== itemId && 
-        getAuctionStatus(i) === 'active' && 
-        i.bids.length > 0 && 
-        i.bids[i.bids.length - 1].userId === userId
-    );
-
-    if (activeAuction) {
-        return res.status(400).json({ 
-            success: false, 
-            message: `You already have an active bid on "${activeAuction.name}". You can only bid on one item at a time.` 
-        });
-    }
-
     const user = users.find(u => u.id === userId);
     if (!user) {
         return res.status(404).json({ success: false, message: 'User not found' });
     }
 
+    const amount = user.kogbucks_balance - (user.kogbucks_on_hold || 0);
+
+    if (amount <= 0) {
+        return res.status(400).json({ success: false, message: 'You have no available Kogbucks to bid.' });
+    }
+
+    if (amount <= item.currentBid) {
+        return res.status(400).json({ success: false, message: 'Your available Kogbucks balance must be higher than the current bid' });
+    }
+
+    // Check if user is already the highest bidder on any active item (including this one)
+    const activeAuction = auctionItems.find(i =>
+        getAuctionStatus(i) === 'active' &&
+        i.bids.length > 0 &&
+        i.bids[i.bids.length - 1].userId === userId
+    );
+
+    if (activeAuction) {
+        return res.status(400).json({
+            success: false,
+            message: `You already have an active bid on "${activeAuction.name}". You can only bid after you've been outbid.`
+        });
+    }
+
     // Handle existing high bid processing
-    let refundAmount = 0;
     const previousHighBid = item.bids.length > 0 ? item.bids[item.bids.length - 1] : null;
 
-    // Check if user is raising their own bid
-    const isRaisingOwnBid = previousHighBid && previousHighBid.userId === userId;
-    
-    // Calculate total available funds (current balance + potential refund if raising own bid)
-    let availableFunds = user.kogbucks_balance;
-    if (isRaisingOwnBid) {
-        availableFunds += previousHighBid.amount; 
-    }
-
-    if (amount > availableFunds) {
-        return res.status(400).json({ success: false, message: 'Insufficient funds' });
-    }
-
     // 1. DEDUCT from current user (Hold funds)
-    if (isRaisingOwnBid) {
-        // Refund previous bid first (logically)
-        user.kogbucks_balance += previousHighBid.amount;
-    }
-    user.kogbucks_balance -= parseFloat(amount);
+    user.kogbucks_on_hold = (user.kogbucks_on_hold || 0) + amount;
 
-
-    // 2. REFUND previous bidder (if different user)
-    if (previousHighBid && !isRaisingOwnBid) {
+    // 2. REFUND previous bidder
+    if (previousHighBid) {
         const prevUser = users.find(u => u.id === previousHighBid.userId);
         if (prevUser) {
-            prevUser.kogbucks_balance += previousHighBid.amount;
-            console.log(`Refunded ${previousHighBid.amount} to user ${prevUser.id}`);
+            prevUser.kogbucks_on_hold = (prevUser.kogbucks_on_hold || 0) - previousHighBid.amount;
+            console.log(`Refunded (un-held) ${previousHighBid.amount} for user ${prevUser.id}`);
         }
     }
 
-    item.currentBid = parseFloat(amount);
+    item.currentBid = amount;
     item.bidCount++;
-    item.bids.push({ userId, amount: parseFloat(amount), timestamp: new Date() });
+    item.bids.push({ userId, amount: amount, timestamp: new Date() });
 
     // Return the updated balance for the frontend
-    res.json({ 
-        success: true, 
-        item: { ...item, status: getAuctionStatus(item) }, 
-        message: 'Bid placed successfully',
-        newBalance: user.kogbucks_balance
+    res.json({
+        success: true,
+        item: { ...item, status: getAuctionStatus(item) },
+        message: 'Bid placed successfully. Funds are now on hold.',
+        newBalance: user.kogbucks_balance,
+        newOnHold: user.kogbucks_on_hold
     });
 });
 
@@ -277,6 +267,28 @@ app.put('/api/auction-items/:id', (req, res) => {
     auctionItems[index] = { ...auctionItems[index], ...updates };
     res.json({ success: true, item: auctionItems[index] });
 });
+
+// Auction Finalization Job
+setInterval(() => {
+    auctionItems.forEach(item => {
+        if (!item.finalized && getAuctionStatus(item) === 'ended') {
+            item.finalized = true;
+            console.log(`Finalizing auction for item: ${item.name}`);
+
+            if (item.bids.length > 0) {
+                const winningBid = item.bids[item.bids.length - 1];
+                const winningUser = users.find(u => u.id === winningBid.userId);
+
+                if (winningUser) {
+                    // Permanently deduct the held funds from their main balance
+                    winningUser.kogbucks_balance -= winningBid.amount;
+                    winningUser.kogbucks_on_hold -= winningBid.amount;
+                    console.log(`Item sold! Deducted ${winningBid.amount} from user ${winningUser.id}`);
+                }
+            }
+        }
+    });
+}, 5000);
 
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);

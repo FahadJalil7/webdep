@@ -83,14 +83,13 @@ import { AuthService } from '../../../services/auth.service';
             <div class="bid-header">
                 <h3>Place a Bid</h3>
                 <div class="balance-display" *ngIf="authService.getCurrentUser()">
-                    Balance: <span class="balance-amount">\${{ authService.getCurrentUser().kogbucks_balance.toFixed(2) }}</span>
+                    Available: <span class="balance-amount">\${{ (authService.getCurrentUser().kogbucks_balance - (authService.getCurrentUser().kogbucks_on_hold || 0)).toFixed(2) }}</span>
                 </div>
             </div>
             <div class="bid-input-group">
-                <span class="currency">$</span>
-                <input type="number" [(ngModel)]="bidAmount" [min]="item.currentBid + 1" class="bid-input">
+                <span class="currency">Entire Balance:</span>
                 <button class="btn-bid" (click)="placeBid()" [disabled]="!isValidBid()">
-                    Place Bid
+                    Hold \${{ (authService.getCurrentUser()?.kogbucks_balance - (authService.getCurrentUser()?.kogbucks_on_hold || 0)).toFixed(2) }}
                 </button>
             </div>
             <p *ngIf="message" [class.error]="isError" [class.success]="!isError">{{ message }}</p>
@@ -374,6 +373,7 @@ import { AuthService } from '../../../services/auth.service';
     }
 
     .btn-bid {
+      width: 100%;
       padding: 12px 24px;
       background: var(--accent-gradient);
       border: none;
@@ -440,7 +440,6 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class AuctionDetailComponent implements OnInit, OnDestroy {
   item: AuctionItem | null = null;
-  bidAmount: number = 0;
   message: string = '';
   isError: boolean = false;
   countdownText: string = '';
@@ -470,7 +469,6 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
     this.auctionService.getItem(id).subscribe(res => {
       if (res.success) {
         this.item = res.item;
-        this.bidAmount = this.item.currentBid + 1;
         this.updateCountdown();
         this.startCountdown();
       } else {
@@ -530,7 +528,8 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
   }
 
   isValidBid(): boolean {
-    return this.item ? this.bidAmount > this.item.currentBid : false;
+    const user = this.authService.getCurrentUser();
+    return this.item && user ? (user.kogbucks_balance - (user.kogbucks_on_hold || 0)) > this.item.currentBid : false;
   }
 
   placeBid() {
@@ -543,15 +542,16 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.auctionService.placeBid(this.item.id, this.bidAmount, currentUser.id).subscribe({
+    const bidAmount = currentUser.kogbucks_balance - (currentUser.kogbucks_on_hold || 0);
+
+    this.auctionService.placeBid(this.item.id, bidAmount, currentUser.id).subscribe({
       next: (res) => {
         if (res.success) {
           this.item = res.item;
           this.message = 'Bid placed successfully!';
           this.isError = false;
-          this.bidAmount = this.item.currentBid + 1;
           if (res.newBalance !== undefined) {
-            this.authService.updateUserBalance(res.newBalance);
+            this.authService.updateUserBalance(res.newBalance, res.newOnHold);
           }
         }
       },

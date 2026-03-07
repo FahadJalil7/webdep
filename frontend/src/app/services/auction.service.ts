@@ -46,8 +46,8 @@ export class AuctionService {
         return this.http.put<{ success: boolean; item: AuctionItem }>(`${this.apiUrl}/${id}`, item);
     }
 
-    placeBid(id: number, amount: number, userId: number): Observable<{ success: boolean; item: AuctionItem; message: string; newBalance: number }> {
-        return this.http.post<{ success: boolean; item: AuctionItem; message: string; newBalance: number }>(
+    placeBid(id: number, amount: number, userId: number): Observable<{ success: boolean; item: AuctionItem; message: string; newBalance: number, newOnHold?: number }> {
+        return this.http.post<{ success: boolean; item: AuctionItem; message: string; newBalance: number, newOnHold?: number }>(
             `${this.apiUrl}/${id}/bid`,
             { amount, userId }
         );
