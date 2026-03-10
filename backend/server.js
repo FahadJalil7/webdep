@@ -330,14 +330,20 @@ setInterval(() => {
     });
 }, 5000);
 
-// Return JSON 404 for any unmatched /api routes
+// Return JSON 404 for any unmatched /api routes. In Express 5, an unfollowed app.use('/api') acts globally.
 app.use('/api', (req, res) => {
     res.status(404).json({ success: false, message: 'API Route Not Found' });
 });
 
 // Fallback for SPA routing - serve index.html for all non-API paths
-app.get('/*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
+app.use((req, res, next) => {
+    // Basic catch-all middleware using standard res.sendFile. Since it's placed after all API components,
+    // this inherently acts exactly as a * glob for GET navigation without violating Express 5 path-to-regexp parsing.
+    if (req.method === 'GET') {
+        res.sendFile(path.join(frontendPath, 'index.html'));
+    } else {
+        next();
+    }
 });
 
 app.listen(PORT, () => {
