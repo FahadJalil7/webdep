@@ -331,7 +331,7 @@ setInterval(() => {
 }, 5000);
 
 // Return JSON 404 for any unmatched /api routes
-app.all('/api/*', (req, res) => {
+app.use('/api', (req, res) => {
     res.status(404).json({ success: false, message: 'API Route Not Found' });
 });
 
