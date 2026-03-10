@@ -1,0 +1,13 @@
+{
+  "name": "group-project-team-26",
+  "version": "1.0.0",
+  "description": "Full-stack single-origin auction app",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "install": "cd frontend && npm install && cd ../backend && npm install",
+    "build": "cd frontend && npm run build && cp -r dist/frontend/browser ../backend/public",
+    "start": "cd backend && node server.js"
+  }
+}

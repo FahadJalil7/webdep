@@ -1,12 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
+
+// Serve static files from the frontend build
+const frontendPath = path.join(__dirname, 'public');
+app.use(express.static(frontendPath));
 
 
 const users = [
@@ -325,6 +330,17 @@ setInterval(() => {
     });
 }, 5000);
 
+// Return JSON 404 for any unmatched /api routes
+app.all('/api/*', (req, res) => {
+    res.status(404).json({ success: false, message: 'API Route Not Found' });
+});
+
+// Fallback for SPA routing - serve index.html for all non-API paths
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
+

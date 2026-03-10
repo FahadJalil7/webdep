@@ -30,7 +30,7 @@ export interface AuctionEvent {
     providedIn: 'root'
 })
 export class AuctionService {
-    private apiUrl = 'http://localhost:3000/api';
+    private apiUrl = '/api';
 
     constructor(private http: HttpClient) { }
 
