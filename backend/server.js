@@ -336,7 +336,7 @@ app.use('/api', (req, res) => {
 });
 
 // Fallback for SPA routing - serve index.html for all non-API paths
-app.get('*', (req, res) => {
+app.get('/*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
