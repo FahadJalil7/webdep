@@ -72,19 +72,37 @@ app.put('/api/users/:id/kogbucks', (req, res) => {
     res.json({ success: true, user: userWithoutPassword, message: 'Kogbucks balance updated successfully' });
 });
 
-// --- Auction Items API ---
+// --- Auction Events API ---
 
 // Helper to compute auction status
-function getAuctionStatus(item) {
+function getAuctionStatus(auction) {
     const now = new Date();
-    if (new Date(item.endTime) < now) return 'ended';
-    if (new Date(item.startTime) > now) return 'upcoming';
+    if (new Date(auction.endTime) < now) return 'ended';
+    if (new Date(auction.startTime) > now) return 'upcoming';
     return 'active';
 }
 
-let auctionItems = [
+let auctions = [
     {
         id: 1,
+        title: "Spring Collector's Auction",
+        startTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        finalized: false
+    },
+    {
+        id: 2,
+        title: "Weekend Quick Auction",
+        startTime: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+        finalized: true
+    }
+];
+
+let items = [
+    {
+        id: 1,
+        auctionId: 1,
         name: "Vintage Film Camera",
         description: "A pristine condition 1970s film camera. Perfect for collectors and enthusiasts.",
         value: 150.00,
@@ -94,11 +112,10 @@ let auctionItems = [
         type: "Physical",
         imageUrl: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
         bidCount: 5,
-        startTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     },
     {
         id: 2,
+        auctionId: 1,
         name: "$50 Amazon Gift Card",
         description: "Digital code for Amazon US.",
         value: 50.00,
@@ -108,11 +125,10 @@ let auctionItems = [
         type: "Gift Card",
         imageUrl: "https://images.unsplash.com/photo-1512418490979-92798cec1380?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
         bidCount: 2,
-        startTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        endTime: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()
     },
     {
         id: 3,
+        auctionId: 2,
         name: "Signed Basketball",
         description: "Basketball signed by the local team captain.",
         value: 200.00,
@@ -122,77 +138,90 @@ let auctionItems = [
         type: "Physical",
         imageUrl: "https://images.unsplash.com/photo-1519861531473-920026393112?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
         bidCount: 8,
-        startTime: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-        endTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
     }
 ];
 
-// Get all auction items (with optional sorting)
-app.get('/api/auction-items', (req, res) => {
-    let items = auctionItems.map(item => ({ ...item, status: getAuctionStatus(item) }));
-    const { sortBy } = req.query;
+// Get all auctions
+app.get('/api/auctions', (req, res) => {
+    let result = auctions.map(auction => {
+        const auctionItems = items.filter(i => i.auctionId === auction.id);
+        return { ...auction, status: getAuctionStatus(auction), items: auctionItems, itemCount: auctionItems.length };
+    });
 
-    if (sortBy === 'priceAsc') {
-        items.sort((a, b) => a.currentBid - b.currentBid);
-    } else if (sortBy === 'priceDesc') {
-        items.sort((a, b) => b.currentBid - a.currentBid);
-    } else if (sortBy === 'popularity') {
-        items.sort((a, b) => b.bidCount - a.bidCount);
-    }
-
-    res.json({ success: true, items });
+    res.json({ success: true, auctions: result });
 });
 
-// Get single item
-app.get('/api/auction-items/:id', (req, res) => {
-    const item = auctionItems.find(i => i.id === parseInt(req.params.id));
-    if (item) {
-        res.json({ success: true, item: { ...item, status: getAuctionStatus(item) } });
+// Get single auction
+app.get('/api/auctions/:id', (req, res) => {
+    const auction = auctions.find(a => a.id === parseInt(req.params.id));
+    if (auction) {
+        const auctionItems = items.filter(i => i.auctionId === auction.id);
+        res.json({ success: true, auction: { ...auction, status: getAuctionStatus(auction), items: auctionItems } });
     } else {
-        res.status(404).json({ success: false, message: 'Item not found' });
+        res.status(404).json({ success: false, message: 'Auction not found' });
     }
 });
 
-// Create new auction item
-app.post('/api/auction-items', (req, res) => {
-    const { name, description, value, type, imageUrl, startingBid, startTime, endTime } = req.body;
+// Create new auction
+app.post('/api/auctions', (req, res) => {
+    const { title, startTime, endTime, items: newItems } = req.body;
 
-    const newItem = {
+    const newAuction = {
         id: Date.now(),
-        name,
-        description,
-        value: parseFloat(value),
-        startingBid: parseFloat(startingBid) || 0,
-        currentBid: parseFloat(startingBid) || 0,
-        bids: [],
-        type,
-        imageUrl: imageUrl || "https://via.placeholder.com/300?text=No+Image",
-        bidCount: 0,
+        title,
         startTime: startTime || new Date().toISOString(),
         endTime: endTime || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         finalized: false
     };
+    auctions.push(newAuction);
 
-    auctionItems.push(newItem);
-    res.json({ success: true, item: { ...newItem, status: getAuctionStatus(newItem) } });
+    const createdItems = [];
+    if (newItems && Array.isArray(newItems)) {
+        newItems.forEach((item, index) => {
+            const newItem = {
+                id: Date.now() + index + 1,
+                auctionId: newAuction.id,
+                name: item.name,
+                description: item.description,
+                value: parseFloat(item.value),
+                startingBid: parseFloat(item.startingBid) || 0,
+                currentBid: parseFloat(item.startingBid) || 0,
+                bids: [],
+                type: item.type || "Physical",
+                imageUrl: item.imageUrl || "https://via.placeholder.com/300?text=No+Image",
+                bidCount: 0
+            };
+            items.push(newItem);
+            createdItems.push(newItem);
+        });
+    }
+
+    res.json({ success: true, auction: { ...newAuction, status: getAuctionStatus(newAuction), items: createdItems } });
 });
 
-// Place a bid
-app.post('/api/auction-items/:id/bid', (req, res) => {
+// Place a bid on an item
+app.post('/api/items/:id/bid', (req, res) => {
     const itemId = parseInt(req.params.id);
     const { userId } = req.body;
 
-    const item = auctionItems.find(i => i.id === itemId);
+    const item = items.find(i => i.id === itemId);
     if (!item) {
         return res.status(404).json({ success: false, message: 'Item not found' });
     }
+    
+    const auction = auctions.find(a => a.id === item.auctionId);
+    if (!auction) {
+        return res.status(404).json({ success: false, message: 'Auction not found' });
+    }
+
+    const status = getAuctionStatus(auction);
 
     // Reject bids on ended auctions
-    if (getAuctionStatus(item) === 'ended') {
+    if (status === 'ended') {
         return res.status(400).json({ success: false, message: 'This auction has ended' });
     }
 
-    if (getAuctionStatus(item) === 'upcoming') {
+    if (status === 'upcoming') {
         return res.status(400).json({ success: false, message: 'This auction has not started yet' });
     }
 
@@ -211,32 +240,33 @@ app.post('/api/auction-items/:id/bid', (req, res) => {
         return res.status(400).json({ success: false, message: 'Your available Kogbucks balance must be higher than the current bid' });
     }
 
-    // Check if user is already the highest bidder on any active item (including this one)
-    const activeAuction = auctionItems.find(i =>
-        getAuctionStatus(i) === 'active' &&
-        i.bids.length > 0 &&
-        i.bids[i.bids.length - 1].userId === userId
-    );
+    // Check if user is already the highest bidder on any active item in any auction
+    const activeItem = items.find(i => {
+        const a = auctions.find(act => act.id === i.auctionId);
+        return a && getAuctionStatus(a) === 'active' && i.bids.length > 0 && i.bids[i.bids.length - 1].userId === userId;
+    });
 
-    if (activeAuction) {
+    if (activeItem) {
+        if (activeItem.id === item.id) {
+            return res.status(400).json({
+                success: false,
+                message: `You are already the highest bidder on this item. You can only bid after you've been outbid.`
+            });
+        }
         return res.status(400).json({
             success: false,
-            message: `You already have an active bid on "${activeAuction.name}". You can only bid after you've been outbid.`
+            message: `You already have an active bid on "${activeItem.name}". You can only bid after you've been outbid.`
         });
     }
 
-    // Handle existing high bid processing
     const previousHighBid = item.bids.length > 0 ? item.bids[item.bids.length - 1] : null;
 
-    // 1. DEDUCT from current user (Hold funds)
     user.kogbucks_on_hold = (user.kogbucks_on_hold || 0) + amount;
 
-    // 2. REFUND previous bidder
     if (previousHighBid) {
         const prevUser = users.find(u => u.id === previousHighBid.userId);
         if (prevUser) {
             prevUser.kogbucks_on_hold = (prevUser.kogbucks_on_hold || 0) - previousHighBid.amount;
-            console.log(`Refunded (un-held) ${previousHighBid.amount} for user ${prevUser.id}`);
         }
     }
 
@@ -244,48 +274,53 @@ app.post('/api/auction-items/:id/bid', (req, res) => {
     item.bidCount++;
     item.bids.push({ userId, amount: amount, timestamp: new Date() });
 
-    // Return the updated balance for the frontend
     res.json({
         success: true,
-        item: { ...item, status: getAuctionStatus(item) },
+        item: item,
         message: 'Bid placed successfully. Funds are now on hold.',
         newBalance: user.kogbucks_balance,
         newOnHold: user.kogbucks_on_hold
     });
 });
 
-// Update item (Edit)
-app.put('/api/auction-items/:id', (req, res) => {
-    const itemId = parseInt(req.params.id);
+// Update auction (Edit) - mainly start/end time
+app.put('/api/auctions/:id', (req, res) => {
+    const auctionId = parseInt(req.params.id);
     const updates = req.body;
 
-    const index = auctionItems.findIndex(i => i.id === itemId);
-    if (index === -1) {
-        return res.status(404).json({ success: false, message: 'Item not found' });
+    const auction = auctions.find(a => a.id === auctionId);
+    if (!auction) {
+        return res.status(404).json({ success: false, message: 'Auction not found' });
     }
 
-    auctionItems[index] = { ...auctionItems[index], ...updates };
-    res.json({ success: true, item: auctionItems[index] });
+    if (updates.title) auction.title = updates.title;
+    if (updates.startTime) auction.startTime = updates.startTime;
+    if (updates.endTime) auction.endTime = updates.endTime;
+
+    const auctionItems = items.filter(i => i.auctionId === auction.id);
+    res.json({ success: true, auction: { ...auction, status: getAuctionStatus(auction), items: auctionItems } });
 });
 
 // Auction Finalization Job
 setInterval(() => {
-    auctionItems.forEach(item => {
-        if (!item.finalized && getAuctionStatus(item) === 'ended') {
-            item.finalized = true;
-            console.log(`Finalizing auction for item: ${item.name}`);
+    auctions.forEach(auction => {
+        if (!auction.finalized && getAuctionStatus(auction) === 'ended') {
+            auction.finalized = true;
+            console.log(`Finalizing auction: ${auction.title}`);
 
-            if (item.bids.length > 0) {
-                const winningBid = item.bids[item.bids.length - 1];
-                const winningUser = users.find(u => u.id === winningBid.userId);
+            const auctionItems = items.filter(i => i.auctionId === auction.id);
+            auctionItems.forEach(item => {
+                if (item.bids.length > 0) {
+                    const winningBid = item.bids[item.bids.length - 1];
+                    const winningUser = users.find(u => u.id === winningBid.userId);
 
-                if (winningUser) {
-                    // Permanently deduct the held funds from their main balance
-                    winningUser.kogbucks_balance -= winningBid.amount;
-                    winningUser.kogbucks_on_hold -= winningBid.amount;
-                    console.log(`Item sold! Deducted ${winningBid.amount} from user ${winningUser.id}`);
+                    if (winningUser) {
+                        winningUser.kogbucks_balance -= winningBid.amount;
+                        winningUser.kogbucks_on_hold -= winningBid.amount;
+                        console.log(`Item sold! Deducted ${winningBid.amount} from user ${winningUser.id}`);
+                    }
                 }
-            }
+            });
         }
     });
 }, 5000);

@@ -2,445 +2,183 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { AuctionService, AuctionItem } from '../../../services/auction.service';
+import { AuctionService, AuctionEvent, AuctionItem } from '../../../services/auction.service';
 import { AuthService } from '../../../services/auth.service';
+import { WishlistService } from '../../../services/wishlist.service';
 
 @Component({
   selector: 'app-auction-detail',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
-    <div class="detail-container" *ngIf="item">
+    <div class="detail-container" *ngIf="auction">
       <button class="btn-back" (click)="goBack()">
         ← Back to Auctions
       </button>
 
-      <div class="detail-content glass-panel">
-        <div class="image-section" [style.backgroundImage]="'url(' + item.imageUrl + ')'">
-            <div class="type-badge">{{ item.type }}</div>
-            <div class="status-badge" [ngClass]="item.status">
-              {{ item.status === 'active' ? '● LIVE' : item.status === 'ended' ? 'ENDED' : 'UPCOMING' }}
+      <div class="auction-header glass-panel">
+        <div class="header-info">
+            <h1>{{ auction.title }}</h1>
+            <div class="status-badge" [ngClass]="auction.status">
+              {{ auction.status === 'active' ? '● LIVE' : auction.status === 'ended' ? 'ENDED' : 'UPCOMING' }}
             </div>
         </div>
 
-        <div class="info-section">
-          <h1>{{ item.name }}</h1>
-          <p class="description">{{ item.description }}</p>
-          
-          <div class="stats-grid">
-            <div class="stat">
-              <span class="label">Starting Bid</span>
-              <span class="value">\${{ item.startingBid.toFixed(2) }}</span>
-            </div>
-            <div class="stat">
-              <span class="label">Current Bid</span>
-              <span class="value highlight">\${{ item.currentBid.toFixed(2) }}</span>
-            </div>
-            <div class="stat">
-              <span class="label">Est. Value</span>
-              <span class="value">\${{ item.value.toFixed(2) }}</span>
-            </div>
-            <div class="stat">
-              <span class="label">Bids</span>
-              <span class="value">{{ item.bidCount }}</span>
-            </div>
-          </div>
-
-          <!-- Time Frame Section -->
-          <div class="time-frame-section">
-            <h3>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-              </svg>
-              Auction Time Frame
-            </h3>
+        <div class="time-frame-section">
             <div class="time-details">
               <div class="time-item">
-                <span class="time-label">Start</span>
-                <span class="time-value">{{ formatDate(item.startTime) }}</span>
+                <span class="time-label">Starts</span>
+                <span class="time-value">{{ formatDate(auction.startTime) }}</span>
               </div>
               <div class="time-item">
-                <span class="time-label">End</span>
-                <span class="time-value">{{ formatDate(item.endTime) }}</span>
+                <span class="time-label">Ends</span>
+                <span class="time-value">{{ formatDate(auction.endTime) }}</span>
               </div>
             </div>
-            <div class="countdown-display" *ngIf="item.status === 'active'">
-              <span class="countdown-label">Time Remaining</span>
+            <div class="countdown-display" *ngIf="auction.status === 'active'">
+              <span class="countdown-label">Time Remaining:</span>
               <span class="countdown-value">{{ countdownText }}</span>
             </div>
-            <div class="countdown-display ended" *ngIf="item.status === 'ended'">
-              <span class="countdown-label">Status</span>
+            <div class="countdown-display ended" *ngIf="auction.status === 'ended'">
+              <span class="countdown-label">Status:</span>
               <span class="countdown-value">Auction has ended</span>
             </div>
-            <div class="countdown-display upcoming" *ngIf="item.status === 'upcoming'">
-              <span class="countdown-label">Status</span>
-              <span class="countdown-value">Auction starts soon</span>
+            <div class="countdown-display upcoming" *ngIf="auction.status === 'upcoming'">
+              <span class="countdown-label">Status:</span>
+              <span class="countdown-value">Starts in {{ countdownText }}</span>
             </div>
-          </div>
+        </div>
 
-          <!-- Bidding Section - only for active auctions -->
-          <div class="bidding-section" *ngIf="item.status === 'active' && !isAdmin()">
-            <div class="bid-header">
-                <h3>Place a Bid</h3>
-                <div class="balance-display" *ngIf="authService.getCurrentUser()">
-                    Available: <span class="balance-amount">\${{ (authService.getCurrentUser().kogbucks_balance - (authService.getCurrentUser().kogbucks_on_hold || 0)).toFixed(2) }}</span>
+        <div class="admin-actions" *ngIf="isAdmin()">
+            <button class="btn-edit" (click)="editAuction()">Edit Auction Details</button>
+        </div>
+      </div>
+
+      <div class="items-section">
+        <h2>Items in this Auction</h2>
+        
+        <div *ngIf="globalMessage" class="global-message" [ngClass]="{'success-msg': !isError, 'error-msg': isError}">
+            {{ globalMessage }}
+        </div>
+
+        <div class="items-grid">
+            <div class="item-card glass-panel" *ngFor="let item of auction.items">
+                <div class="item-image" [style.backgroundImage]="'url(' + item.imageUrl + ')'">
+                    <div class="type-badge">{{ item.type }}</div>
+                    <button class="btn-fav" (click)="toggleFav($event, item)" *ngIf="!isAdmin()">
+                        {{ isFavourite(item.id) ? '❤️' : '🤍' }}
+                    </button>
+                </div>
+                <div class="item-info">
+                    <h3>{{ item.name }}</h3>
+                    <p class="description">{{ item.description }}</p>
+                    
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="label">Value</span>
+                            <span class="value">\${{ item.value.toFixed(2) }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Starting</span>
+                            <span class="value">\${{ item.startingBid.toFixed(2) }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Current</span>
+                            <span class="value highlight">\${{ item.currentBid.toFixed(2) }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="label">Bids</span>
+                            <span class="value">{{ item.bidCount }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Bidding area -->
+                    <div class="bidding-area" *ngIf="auction.status === 'active' && !isAdmin()">
+                        <div class="balance-info" *ngIf="authService.getCurrentUser()">
+                            Avail: \${{ (authService.getCurrentUser()?.kogbucks_balance - (authService.getCurrentUser()?.kogbucks_on_hold || 0)).toFixed(2) }}
+                        </div>
+                        <button class="btn-bid" (click)="placeBid(item)" [disabled]="!isValidBid(item)">
+                            Bid \${{ (authService.getCurrentUser()?.kogbucks_balance - (authService.getCurrentUser()?.kogbucks_on_hold || 0)).toFixed(2) }}
+                        </button>
+                    </div>
+
+                    <div class="status-notice ended" *ngIf="auction.status === 'ended'">
+                        Bidding Closed
+                    </div>
                 </div>
             </div>
-            <div class="bid-input-group">
-                <span class="currency">Entire Balance:</span>
-                <button class="btn-bid" (click)="placeBid()" [disabled]="!isValidBid()">
-                    Hold \${{ (authService.getCurrentUser()?.kogbucks_balance - (authService.getCurrentUser()?.kogbucks_on_hold || 0)).toFixed(2) }}
-                </button>
+            <div *ngIf="!auction.items || auction.items.length === 0" class="empty-items text-center">
+                This auction has no items yet.
             </div>
-            <p *ngIf="message" [class.error]="isError" [class.success]="!isError">{{ message }}</p>
-          </div>
-
-          <div class="bidding-section ended-notice" *ngIf="item.status === 'ended'">
-            <h3>🔒 Bidding Closed</h3>
-            <p class="ended-message">This auction has ended. No more bids can be placed.</p>
-          </div>
-
-          <div class="bidding-section upcoming-notice" *ngIf="item.status === 'upcoming'">
-            <h3>⏳ Bidding Not Yet Open</h3>
-            <p class="upcoming-message">This auction has not started yet. Check back soon!</p>
-          </div>
-
-          <div class="admin-actions" *ngIf="isAdmin()">
-            <button class="btn-edit" (click)="editItem()">Edit Item</button>
-          </div>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .detail-container {
-      padding: 20px;
-      max-width: 1000px;
-      margin: 0 auto;
-      color: white;
-      min-height: 100vh;
-    }
+    .detail-container { padding: 20px; max-width: 1000px; margin: 0 auto; color: white; min-height: 100vh; }
+    .btn-back { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; margin-bottom: 20px; }
+    .glass-panel { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 25px; margin-bottom: 30px; }
+    
+    .auction-header { display: flex; flex-direction: column; gap: 20px; }
+    .header-info { display: flex; justify-content: space-between; align-items: center; }
+    h1 { margin: 0; font-size: 28px; }
+    .status-badge { padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+    .status-badge.active { background: rgba(34, 197, 94, 0.9); color: white; animation: pulse-glow 2s ease-in-out infinite; }
+    .status-badge.ended { background: rgba(239, 68, 68, 0.9); color: white; }
+    .status-badge.upcoming { background: rgba(234, 179, 8, 0.9); color: #1a1a1a; }
+    
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); } 50% { box-shadow: 0 0 12px rgba(34, 197, 94, 0.7); } }
+    
+    .time-frame-section { display: flex; justify-content: space-between; align-items: center; background: rgba(41, 128, 185, 0.08); padding: 15px; border-radius: 8px; flex-wrap: wrap; gap: 15px; }
+    .time-details { display: flex; gap: 40px; }
+    .time-item { display: flex; flex-direction: column; gap: 4px; }
+    .time-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; }
+    .time-value { font-size: 14px; font-weight: 500; }
+    
+    .countdown-display { display: flex; align-items: center; gap: 10px; background: rgba(41, 128, 185, 0.15); padding: 8px 14px; border-radius: 8px; }
+    .countdown-display.ended { background: rgba(239, 68, 68, 0.15); }
+    .countdown-display.upcoming { background: rgba(234, 179, 8, 0.15); }
+    .countdown-label { font-size: 12px; color: var(--text-secondary); }
+    .countdown-value { font-size: 16px; font-weight: 700; color: var(--theme-blue-40); tabular-nums; }
+    
+    .admin-actions .btn-edit { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+    
+    .items-section h2 { margin-bottom: 20px; font-size: 22px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; }
+    .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+    
+    .item-card { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .item-image { height: 180px; background-size: cover; background-position: center; position: relative; }
+    .type-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    
+    .btn-fav { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.2); border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: background 0.2s; }
+    .btn-fav:hover { background: rgba(255,255,255,0.4); }
 
-    .btn-back {
-      background: none;
-      border: none;
-      color: var(--text-secondary);
-      font-size: 16px;
-      cursor: pointer;
-      margin-bottom: 20px;
-    }
-
-    .detail-content {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-      overflow: hidden;
-      padding: 0;
-    }
-
-    .image-section {
-      height: 100%;
-      min-height: 400px;
-      background-size: cover;
-      background-position: center;
-      position: relative;
-    }
-
-    .type-badge {
-        position: absolute;
-        top: 12px;
-        left: 12px;
-        background: rgba(0,0,0,0.6);
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: bold;
-    }
-
-    .status-badge {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        padding: 4px 12px;
-        border-radius: 4px;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 1px;
-    }
-
-    .status-badge.active {
-        background: rgba(34, 197, 94, 0.9);
-        color: white;
-        animation: pulse-glow 2s ease-in-out infinite;
-    }
-
-    .status-badge.ended {
-        background: rgba(239, 68, 68, 0.9);
-        color: white;
-    }
-
-    .status-badge.upcoming {
-        background: rgba(234, 179, 8, 0.9);
-        color: #1a1a1a;
-    }
-
-    @keyframes pulse-glow {
-        0%, 100% { box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); }
-        50% { box-shadow: 0 0 12px rgba(34, 197, 94, 0.7); }
-    }
-
-    .info-section {
-      padding: 30px;
-    }
-
-    h1 {
-      margin-top: 0;
-      font-size: 32px;
-      margin-bottom: 10px;
-    }
-
-    .description {
-      color: var(--text-secondary);
-      line-height: 1.6;
-      margin-bottom: 30px;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 15px;
-      margin-bottom: 24px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .stat {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .label {
-      font-size: 11px;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .value {
-      font-size: 22px;
-      font-weight: bold;
-    }
-
-    .highlight {
-      color: var(--theme-blue-40);
-    }
-
-    /* Time Frame Section */
-    .time-frame-section {
-      background: rgba(41, 128, 185, 0.08);
-      border: 1px solid rgba(41, 128, 185, 0.2);
-      border-radius: 12px;
-      padding: 18px;
-      margin-bottom: 24px;
-    }
-
-    .time-frame-section h3 {
-      margin: 0 0 14px 0;
-      font-size: 15px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--theme-blue-20);
-    }
-
-    .time-details {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .time-item {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .time-label {
-      font-size: 11px;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .time-value {
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .countdown-display {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(41, 128, 185, 0.15);
-      padding: 10px 14px;
-      border-radius: 8px;
-    }
-
-    .countdown-display.ended {
-      background: rgba(239, 68, 68, 0.15);
-    }
-
-    .countdown-display.upcoming {
-      background: rgba(234, 179, 8, 0.15);
-    }
-
-    .countdown-label {
-      font-size: 12px;
-      color: var(--text-secondary);
-    }
-
-    .countdown-value {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--theme-blue-40);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .countdown-display.ended .countdown-value {
-      color: #ef4444;
-      font-size: 14px;
-    }
-
-    .countdown-display.upcoming .countdown-value {
-      color: #eab308;
-      font-size: 14px;
-    }
-
-    /* Bidding Section */
-    .bidding-section {
-      background: rgba(255,255,255,0.05);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-    }
-
-    .bidding-section h3 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .bid-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-    }
-
-    .balance-display {
-        font-size: 14px;
-        color: #ddd;
-        background: rgba(0,0,0,0.2);
-        padding: 4px 8px;
-        border-radius: 4px;
-    }
-
-    .balance-amount {
-        color: #4caf50;
-        font-weight: bold;
-    }
-
-    .bid-input-group {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .currency {
-      font-size: 18px;
-      color: var(--text-secondary);
-    }
-
-    .bid-input {
-      flex: 1;
-      padding: 12px;
-      background: rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
-      color: white;
-      font-size: 18px;
-    }
-
-    .btn-bid {
-      width: 100%;
-      padding: 12px 24px;
-      background: var(--accent-gradient);
-      border: none;
-      border-radius: 8px;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .btn-bid:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 15px rgba(41, 128, 185, 0.4);
-    }
-
-    .btn-bid:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .success { color: #4caf50; margin-top: 10px; }
-    .error { color: #f44336; margin-top: 10px; }
-
-    .ended-notice, .upcoming-notice {
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .ended-message {
-      color: #ef4444;
-      margin: 0;
-      font-size: 14px;
-    }
-
-    .upcoming-message {
-      color: #eab308;
-      margin: 0;
-      font-size: 14px;
-    }
-
-    .btn-edit {
-        width: 100%;
-        padding: 12px;
-        background: transparent;
-        border: 1px solid rgba(255,255,255,0.2);
-        color: white;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-
-    .btn-edit:hover {
-        background: rgba(255,255,255,0.05);
-    }
-
-    @media (max-width: 768px) {
-        .detail-content {
-            grid-template-columns: 1fr;
-        }
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
+    .item-info { padding: 15px; display: flex; flex-direction: column; flex-grow: 1; }
+    .item-info h3 { margin: 0 0 5px 0; font-size: 18px; }
+    .description { color: var(--text-secondary); font-size: 13px; line-height: 1.4; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .stat { display: flex; flex-direction: column; gap: 3px; }
+    .stat .label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; }
+    .stat .value { font-size: 14px; font-weight: bold; }
+    .stat .highlight { color: var(--theme-blue-40); font-size: 15px; }
+    
+    .bidding-area { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+    .balance-info { font-size: 12px; color: #4caf50; }
+    .btn-bid { padding: 8px 16px; background: var(--accent-gradient); border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; }
+    .btn-bid:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status-notice { text-align: center; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-top: auto; background: rgba(255,255,255,0.05); }
+    .status-notice.ended { color: #ef4444; }
+    
+    .global-message { padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; }
+    .success-msg { background: rgba(34, 197, 94, 0.2); color: #4caf50; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .error-msg { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .text-center { text-align: center; padding: 40px; color: var(--text-secondary); }
   `]
 })
 export class AuctionDetailComponent implements OnInit, OnDestroy {
-  item: AuctionItem | null = null;
-  message: string = '';
+  auction: AuctionEvent | null = null;
+  globalMessage: string = '';
   isError: boolean = false;
   countdownText: string = '';
   private timerInterval: any;
@@ -449,13 +187,14 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private auctionService: AuctionService,
-    public authService: AuthService
+    public authService: AuthService,
+    private wishlistService: WishlistService
   ) { }
 
   ngOnInit() {
     this.route.params.subscribe(params => {
       const id = +params['id'];
-      this.loadItem(id);
+      this.loadAuction(id);
     });
   }
 
@@ -465,10 +204,10 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadItem(id: number) {
-    this.auctionService.getItem(id).subscribe(res => {
+  loadAuction(id: number) {
+    this.auctionService.getAuction(id).subscribe(res => {
       if (res.success) {
-        this.item = res.item;
+        this.auction = res.auction;
         this.updateCountdown();
         this.startCountdown();
       } else {
@@ -485,16 +224,25 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
   }
 
   updateCountdown() {
-    if (!this.item) return;
+    if (!this.auction) return;
     const now = new Date().getTime();
-    const end = new Date(this.item.endTime).getTime();
-    const diff = end - now;
+    const end = new Date(this.auction.endTime).getTime();
+    const start = new Date(this.auction.startTime).getTime();
+    
+    let target = this.auction.status === 'upcoming' ? start : end;
+    let diff = target - now;
 
     if (diff <= 0) {
-      this.countdownText = 'Ended';
-      this.item.status = 'ended';
-      if (this.timerInterval) clearInterval(this.timerInterval);
-      return;
+      if (this.auction.status === 'upcoming') {
+          this.auction.status = 'active';
+          this.updateCountdown(); // re-evaluate
+          return;
+      } else {
+          this.countdownText = 'Ended';
+          this.auction.status = 'ended';
+          if (this.timerInterval) clearInterval(this.timerInterval);
+          return;
+      }
     }
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -502,24 +250,20 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    if (days > 0) {
-      this.countdownText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-    } else if (hours > 0) {
-      this.countdownText = `${hours}h ${minutes}m ${seconds}s`;
-    } else {
-      this.countdownText = `${minutes}m ${seconds}s`;
-    }
+    let parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0 || days > 0) parts.push(`${hours}h`);
+    parts.push(`${minutes}m`);
+    parts.push(`${seconds}s`);
+    
+    this.countdownText = parts.join(' ');
   }
 
   formatDate(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+      month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
     });
   }
 
@@ -527,28 +271,32 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
     this.router.navigate(['/auctions']);
   }
 
-  isValidBid(): boolean {
+  isValidBid(item: AuctionItem): boolean {
     const user = this.authService.getCurrentUser();
-    return this.item && user ? (user.kogbucks_balance - (user.kogbucks_on_hold || 0)) > this.item.currentBid : false;
+    return user ? (user.kogbucks_balance - (user.kogbucks_on_hold || 0)) > item.currentBid : false;
   }
 
-  placeBid() {
-    if (!this.item || !this.isValidBid()) return;
+  placeBid(item: AuctionItem) {
+    if (!this.isValidBid(item)) return;
 
     const currentUser = this.authService.getCurrentUser();
     if (!currentUser) {
-      this.message = 'You must be logged in to bid.';
+      this.globalMessage = 'You must be logged in to bid.';
       this.isError = true;
       return;
     }
 
     const bidAmount = currentUser.kogbucks_balance - (currentUser.kogbucks_on_hold || 0);
 
-    this.auctionService.placeBid(this.item.id, bidAmount, currentUser.id).subscribe({
+    this.auctionService.placeBid(item.id, bidAmount, currentUser.id).subscribe({
       next: (res) => {
         if (res.success) {
-          this.item = res.item;
-          this.message = 'Bid placed successfully!';
+          // Update the specific item in the list
+          const idx = this.auction!.items!.findIndex(i => i.id === item.id);
+          if (idx !== -1) {
+              this.auction!.items![idx] = res.item;
+          }
+          this.globalMessage = `Bid placed successfully on ${item.name}!`;
           this.isError = false;
           if (res.newBalance !== undefined) {
             this.authService.updateUserBalance(res.newBalance, res.newOnHold);
@@ -556,19 +304,44 @@ export class AuctionDetailComponent implements OnInit, OnDestroy {
         }
       },
       error: (err) => {
-        this.message = err.error.message || 'Failed to place bid.';
+        this.globalMessage = err.error.message || 'Failed to place bid.';
         this.isError = true;
       }
     });
+
+    // Clear message after 5s
+    setTimeout(() => this.globalMessage = '', 5000);
   }
 
-  editItem() {
-    if (this.item) {
-      this.router.navigate(['/auctions', this.item.id, 'edit']);
+  editAuction() {
+    if (this.auction) {
+      this.router.navigate(['/auctions', this.auction.id, 'edit']);
     }
   }
 
   isAdmin() {
     return this.authService.getCurrentUser()?.role === 'admin';
+  }
+
+  toggleFav(event: Event, item: AuctionItem) {
+    event.stopPropagation();
+    const wishlistItem = {
+      id: item.id,
+      name: item.name,
+      price: item.currentBid,
+      image: item.imageUrl,
+      description: item.description
+    };
+
+    if (this.isFavourite(item.id)) {
+      this.wishlistService.removeFromWishlist(item.id);
+    } else {
+      this.wishlistService.addToWishlist(wishlistItem);
+    }
+  }
+
+  isFavourite(id: number): boolean {
+    const currentList = (this.wishlistService as any).wishlistSubject?.value || [];
+    return !!currentList.find((i: any) => i.id === id);
   }
 }
